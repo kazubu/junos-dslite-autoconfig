@@ -8,9 +8,16 @@ import re
 import sys
 
 import dns.resolver
+import json
+import requests
 
 DISCOVERY_FQDN = '4over6.info'
 FALLBACK_DNS_SERVERS = ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3']
+
+VENDOR_ID = '000000-test_router'
+PRODUCT = 'test-router'
+VERSION = '1_00'
+CAPABILITY = 'dslite, ipip'
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
 
@@ -37,11 +44,26 @@ def discover_provisioning_server(nameservers = None):
 
     return result
 
+def get_provisioning_data(url, vendorid, product, version, capability, token = None):
+    params = {}
+    params["vendorid"] = vendorid
+    params["product"] = product
+    params["version"] = version
+    params["capability"] = capability
+    params["token"] = token
+
+    print(params)
+
+
 if __name__ == '__main__':
     handler = StreamHandler()
     handler.setFormatter(Formatter(LOG_FORMAT))
     logger.addHandler(handler)
 
-    print(discover_provisioning_server())
+    ps = discover_provisioning_server()
+
+    pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
+
+    print(pd)
     exit()
 
