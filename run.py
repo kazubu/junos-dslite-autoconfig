@@ -23,6 +23,10 @@ VERSION = '1_00'
 CAPABILITY = 'dslite, ipip'
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
+CONFIGURATION_FORMAT = """
+set interfaces ip-0/0/0 unit 0 family inet
+set interfaces ip-0/0/0 unit 0 tunnel destination {}
+"""[1:-1]
 
 logger = getLogger(__name__)
 
@@ -59,6 +63,12 @@ def get_provisioning_data(url, vendorid, product, version, capability, token = N
 
     return response
 
+def generate_dslite_configuration(provisioning_data):
+    aftr = provisioning_data['dslite']['aftr']
+
+    return CONFIGURATION_FORMAT.format(aftr)
+
+
 if __name__ == '__main__':
     handler = StreamHandler()
     handler.setFormatter(Formatter(LOG_FORMAT))
@@ -68,6 +78,6 @@ if __name__ == '__main__':
 
     pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
 
-    print(pd)
+    print(generate_dslite_configuration(pd))
     exit()
 
