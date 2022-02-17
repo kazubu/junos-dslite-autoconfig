@@ -10,6 +10,9 @@ import sys
 import dns.resolver
 import json
 import requests
+import urllib3
+from urllib3.exceptions import InsecureRequestWarning
+urllib3.disable_warnings(InsecureRequestWarning)
 
 DISCOVERY_FQDN = '4over6.info'
 FALLBACK_DNS_SERVERS = ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3']
@@ -52,8 +55,9 @@ def get_provisioning_data(url, vendorid, product, version, capability, token = N
     params["capability"] = capability
     params["token"] = token
 
-    print(params)
+    response = json.loads(requests.get(url, params=params, verify=False).text)
 
+    return response
 
 if __name__ == '__main__':
     handler = StreamHandler()
