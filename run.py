@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from logging import getLogger, Formatter, StreamHandler
+from logging import getLogger, Formatter, StreamHandler, DEBUG
 
 import os
 import random
@@ -377,11 +377,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--area', required=True)
     parser.add_argument('--external-interface', required=True)
+    parser.add_argument('--debug')
     args = parser.parse_args()
 
     handler = StreamHandler()
     handler.setFormatter(Formatter(LOG_FORMAT))
     logger.addHandler(handler)
+    if(args.debug):
+        logger.setLevel(DEBUG)
 
     device = Device()
     device.open()
