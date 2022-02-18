@@ -16,7 +16,8 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DISCOVERY_FQDN = '4over6.info'
-FALLBACK_DNS_SERVERS = ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3']
+NTT_EAST_DNS_SERVERS = ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3']
+NTT_WEST_DNS_SERVERS = ['2001:a7ff:5f01::a', '2001:a7ff:5f01:1::a']
 
 VENDOR_ID = '000000-test_router'
 PRODUCT = 'test-router'
@@ -315,10 +316,8 @@ class DNSResolver():
 Main Implementation
 '''
 
-def discover_provisioning_server(nameservers = None):
+def discover_provisioning_server(nameservers):
     resolver = DNSResolver
-    if nameservers == None:
-        return discover_provisioning_server(FALLBACK_DNS_SERVERS)
 
     try:
         response_txt = resolver.txt_query(domain = DISCOVERY_FQDN, server = nameservers.pop())
@@ -359,7 +358,7 @@ if __name__ == '__main__':
     handler.setFormatter(Formatter(LOG_FORMAT))
     logger.addHandler(handler)
 
-    ps = discover_provisioning_server()
+    ps = discover_provisioning_server(NTT_EAST_DNS_SERVERS)
 
     pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
 
