@@ -21,7 +21,7 @@ FALLBACK_DNS_SERVERS = ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3']
 VENDOR_ID = '000000-test_router'
 PRODUCT = 'test-router'
 VERSION = '1_00'
-CAPABILITY = 'dslite, ipip'
+CAPABILITY = 'dslite'
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
 CONFIGURATION_FORMAT = """
