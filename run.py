@@ -367,7 +367,7 @@ def get_interface_address(device, interface_name):
             for ifa in ifa.getiterator("interface-address"):
                 addr = ifa.find("ifa-local").text
                 if addr[0:4] != 'fe80' and ':' in addr:
-                    return addr.split('/')[0]
+                    return addr.strip().split('/')[0]
     return None
 
 
