@@ -361,12 +361,11 @@ def get_interface_address(device, interface_name):
     interfaces = device.rpc.get_interface_information(interface_name = interface_name, terse = True)
 
     for ifa in interfaces.getiterator("address-family"):
-        if ifa.find("address-family-name").text == inet6:
+        if ifa.find("address-family-name").text.strip() == "inet6":
             for ifa in ifa.getiterator("interface-address"):
                 addr = ifa.find("ifa-local").text
                 if addr[0:4] != 'fe80' and ':' in addr:
-                    return addr
-
+                    return addr.split('/')[0]
     return None
 
 
@@ -395,7 +394,7 @@ if __name__ == '__main__':
         logger.error("Interface has no IPv6 address!")
         exit(2)
 
-    logger.debug("Interface address: %s" % inteface_address)
+    logger.debug("Interface address: %s" % interface_address)
 
     if(not (area in DNS_SERVERS)):
         logger.error("Area %s is not found! exit." % area)
