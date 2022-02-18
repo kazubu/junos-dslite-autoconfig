@@ -12,14 +12,12 @@ import struct
 import sys
 
 import argparse
+import ipaddress
 import json
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from jnpr.junos import Device
-from jnpr.junos.utils.config import Config
-from jnpr.junos import exception as JunosException
 
 DISCOVERY_FQDN = '4over6.info'
 DNS_SERVERS = {
@@ -45,8 +43,8 @@ logger = getLogger(__name__)
 DNS Implementation
 '''
 
-
 TYPE_TXT         = 16
+TYPE_AAAA        = 28
 OPCODE_QUERY   = 0
 CLASS_IN      = 1
 
@@ -86,6 +84,11 @@ class DNSUtils():
         if ret_str[-1] == ".":
             ret_str = ret_str[:-1]
         return (ret_str, ret_len)
+
+    @staticmethod
+    def read_aaaa(data: bytes, start_offset: int):
+        ip = ipaddress.IPv6Address(data[start_offset:start_offset+16])
+        return (ip.compressed, len(ip.compressed))
 
 class MessageHeader():      # pylint: disable=too-many-instance-attributes
     """DNS message header."""
@@ -174,6 +177,8 @@ class ResourceRecord():
         if self.rdata_class == CLASS_IN:
             if self.rdata_type == TYPE_TXT:
                 self.rdata, _ = DNSUtils.read_name(data, offset)
+            elif self.rdata_type == TYPE_AAAA:
+                self.rdata, _ = DNSUtils.read_aaaa(data, offset)
         else:
             self.rdata = "UNSUPPORTED CLASS"
 
@@ -308,17 +313,32 @@ class DNSResolver():
             ret.append(answer)
         return ret
 
+    def simple_query(domain: str,
+                  q_type: int,
+                  server: str,
+                  port: int = 53,
+                  ):
+        result = None
+        answers = DNSResolver.udp_query(domain, q_type = q_type, server = server, port = port)
+        for a in answers:
+            if a.rdata_type == q_type:
+                result = a.rdata
+                break;
+
+        return result
+
+    def aaaa_query(domain: str,
+                  server: str,
+                  port: int = 53
+                  ):
+        result = DNSResolver.simple_query(domain, q_type = TYPE_AAAA, server = server, port = port)
+        return result
+
     def txt_query(domain: str,
                   server: str,
                   port: int = 53
                   ):
-        result = None
-        answers = DNSResolver.udp_query(domain, q_type = TYPE_TXT, server = server, port = port)
-        for a in answers:
-            if a.rdata_type == TYPE_TXT:
-                result = a.rdata
-                break;
-
+        result = DNSResolver.simple_query(domain, q_type = TYPE_TXT, server = server, port = port)
         return result
 
 '''
@@ -330,6 +350,7 @@ def discover_provisioning_server(nameservers):
 
     try:
         response_txt = resolver.txt_query(domain = DISCOVERY_FQDN, server = nameservers.pop())
+        logger.debug("Response TXT: %s" % response_txt)
 
     except (DNSException, socket.timeout) as e:
         if len(nameservers):
@@ -344,6 +365,26 @@ def discover_provisioning_server(nameservers):
 
     return result
 
+def get_aftr_address(provisioning_data, nameservers):
+    aftr = provisioning_data['dslite']['aftr']
+    logger.debug("AFTR Address: %s" % aftr)
+    if('.' in aftr):
+        logger.debug("It seems it's FQDN. Try to query AAAA to DNS server.")
+        resolver = DNSResolver
+
+        try:
+            aftr = resolver.aaaa_query(domain = aftr, server = nameservers.pop())
+            logger.debug("Resolved AFTR address: %s" % aftr)
+        except (DNSException, socket.timeout) as e:
+            if len(nameservers):
+                logger.warning("DNS Error. Retry with another DNS server.")
+                return get_aftr_address(provisioning_data, nameservers)
+            else:
+                logger.error("No response.")
+                return None
+
+    return aftr
+
 def get_provisioning_data(url, vendorid, product, version, capability, token = None):
     params = {}
     params["vendorid"] = vendorid
@@ -356,9 +397,7 @@ def get_provisioning_data(url, vendorid, product, version, capability, token = N
 
     return response
 
-def generate_dslite_configuration(provisioning_data, source_address):
-    aftr = provisioning_data['dslite']['aftr']
-
+def generate_dslite_configuration(aftr, source_address):
     return string.Template(CONFIGURATION_FORMAT).substitute(aftr = aftr, source_address = source_address)
 
 def get_interface_address(device, interface_name):
@@ -395,6 +434,10 @@ def update_configuration(device, configuration):
 
 
 if __name__ == '__main__':
+    from jnpr.junos import Device
+    from jnpr.junos.utils.config import Config
+    from jnpr.junos import exception as JunosException
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--area', required=True)
     parser.add_argument('--external-interface', required=True)
@@ -412,6 +455,7 @@ if __name__ == '__main__':
 
     area = args.area
     external_interface = args.external_interface
+    logger.debug("External interface: %s" % external_interface)
 
     interface_address = get_interface_address(device, external_interface)
     if(interface_address == None):
@@ -425,17 +469,25 @@ if __name__ == '__main__':
         exit(1)
 
     ps = discover_provisioning_server(DNS_SERVERS[area])
+    logger.debug("Provisioning server: %s" % ps)
 
     if(ps):
         pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
+        logger.debug("Provisioning Data: %s" % pd)
     else:
         logger.error("Failed to retrieve provisioning server. exit.")
         exit(2)
 
     if(pd):
-        config = generate_dslite_configuration(provisioning_data = pd, source_address = interface_address)
+        aftr = get_aftr_address(pd, DNS_SERVERS[area])
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
+        exit(2)
+
+    if(aftr):
+        config = generate_dslite_configuration(aftr = aftr, source_address = interface_address)
+    else:
+        logger.error("Failed to retrieve AFTR IP address. exit.")
         exit(2)
 
     update_configuration(device, config)
