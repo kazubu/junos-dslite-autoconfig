@@ -16,6 +16,8 @@ import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+from jnpr.junos import Device
+
 DISCOVERY_FQDN = '4over6.info'
 DNS_SERVERS = {
         "NTT_EAST": ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3'],
@@ -355,6 +357,22 @@ def generate_dslite_configuration(provisioning_data):
 
     return CONFIGURATION_FORMAT.format(aftr)
 
+def get_interface_address(device, interface_name):
+    interfaces = device.rpc.get_interface_information(interface_name = interface_name, terse = True)
+
+    for ifa in interfaces.getiterator("address-family"):
+        if ifa.find("address-family-name").text == inet6:
+            for ifa in ifa.getiterator("interface-address"):
+                addr = ifa.find("ifa-local").text
+                if addr[0:4] != 'fe80' and ':' in addr:
+                    return addr
+
+    return None
+
+
+def update_configuration(configuration):
+    return None
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -366,8 +384,18 @@ if __name__ == '__main__':
     handler.setFormatter(Formatter(LOG_FORMAT))
     logger.addHandler(handler)
 
+    device = Device()
+    device.open()
+
     area = args.area
     external_interface = args.external_interface
+
+    interface_address = get_interface_address(device, external_interface)
+    if(interface_address == None):
+        logger.error("Interface has no IPv6 address!")
+        exit(2)
+
+    logger.debug("Interface address: %s" % inteface_address)
 
     if(not (area in DNS_SERVERS)):
         logger.error("Area %s is not found! exit." % area)
@@ -385,7 +413,7 @@ if __name__ == '__main__':
         print(generate_dslite_configuration(pd))
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
-        exit(3)
+        exit(2)
 
     exit()
 
