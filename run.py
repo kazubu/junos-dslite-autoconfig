@@ -358,8 +358,8 @@ def generate_dslite_configuration(provisioning_data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-area', required=True)
-    parser.add_argument('-external-interface', required=True)
+    parser.add_argument('--area', required=True)
+    parser.add_argument('--external-interface', required=True)
     args = parser.parse_args()
 
     handler = StreamHandler()
