@@ -10,14 +10,17 @@ import socket
 import struct
 import sys
 
+import argparse
 import json
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DISCOVERY_FQDN = '4over6.info'
-NTT_EAST_DNS_SERVERS = ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3']
-NTT_WEST_DNS_SERVERS = ['2001:a7ff:5f01::a', '2001:a7ff:5f01:1::a']
+DNS_SERVERS = {
+        "NTT_EAST": ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3'],
+        "NTT_WEST": ['2001:a7ff:5f01::a', '2001:a7ff:5f01:1::a']
+        }
 
 VENDOR_ID = '000000-test_router'
 PRODUCT = 'test-router'
@@ -322,7 +325,7 @@ def discover_provisioning_server(nameservers):
     try:
         response_txt = resolver.txt_query(domain = DISCOVERY_FQDN, server = nameservers.pop())
 
-    except DNSException as e:
+    except (DNSException, socket.timeout) as e:
         if len(nameservers):
             logger.warning("DNS Error. Retry with another DNS server.")
             return discover_provisioning_server(nameservers)
@@ -354,14 +357,35 @@ def generate_dslite_configuration(provisioning_data):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-area', required=True)
+    parser.add_argument('-external-interface', required=True)
+    args = parser.parse_args()
+
     handler = StreamHandler()
     handler.setFormatter(Formatter(LOG_FORMAT))
     logger.addHandler(handler)
 
-    ps = discover_provisioning_server(NTT_EAST_DNS_SERVERS)
+    area = args.area
+    external_interface = args.external_interface
 
-    pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
+    if(not (area in DNS_SERVERS)):
+        logger.error("Area %s is not found! exit." % area)
+        exit(1)
 
-    print(generate_dslite_configuration(pd))
+    ps = discover_provisioning_server(DNS_SERVERS[area])
+
+    if(ps):
+        pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
+    else:
+        logger.error("Failed to retrieve provisioning server. exit.")
+        exit(2)
+
+    if(pd):
+        print(generate_dslite_configuration(pd))
+    else:
+        logger.error("Failed to retrieve provisioning data. exit.")
+        exit(3)
+
     exit()
 
