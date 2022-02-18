@@ -373,27 +373,26 @@ def get_interface_address(device, interface_name):
     return None
 
 def update_configuration(device, configuration):
-    with Config(device) as cu:
-        try:
+    try:
+        with Config(device) as cu:
             cu.lock()
-        except JunosException.LockError as e:
-            logger.error("Failed to lock configuration database. Candidate configuration is may found.")
-            logger.error(e)
-            return
 
-        cu.load(configuration, format="set", merge = True)
+            cu.load(configuration, format="set", merge = True)
 
-        if(cu.diff()):
-            logger.info("Configuration should be updated. Committing...")
-            try:
+            if(cu.diff()):
+                logger.info("Configuration should be updated. Committing...")
                 cu.commit(comment = 'DS-Lite configuration update')
-            except JunosException.RpcError as e:
-                logger.error("Failed to commit configuration.")
-                logger.error(e)
-        else:
-            logger.info("Configuration is not changed.")
+            else:
+                logger.info("Configuration is not changed.")
 
-        cu.unlock()
+            cu.unlock()
+    except JunosException.LockError as e:
+        logger.error("Failed to lock configuration database. Candidate configuration is may found.")
+        logger.error(e)
+    except JunosException.RpcError as e:
+        logger.error("Failed to commit configuration.")
+        logger.error(e)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
