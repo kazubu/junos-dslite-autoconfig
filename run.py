@@ -19,6 +19,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from jnpr.junos import Device
 from jnpr.junos.utils.config import Config
+from jnpr.junos import exception as JunosException
 
 DISCOVERY_FQDN = '4over6.info'
 DNS_SERVERS = {
@@ -371,17 +372,28 @@ def get_interface_address(device, interface_name):
                     return addr.strip().split('/')[0]
     return None
 
-
 def update_configuration(device, configuration):
-    with Config(device, mode='exclusive') as cu:
-        cu.lock()
+    with Config(device) as cu:
+        try:
+            cu.lock()
+        except JunosException.LockError as e:
+            logger.error("Failed to lock configuration database. Candidate configuration is may found.")
+            logger.error(e)
+            return
 
         cu.load(configuration, format="set", merge = True)
-        if(cu.pdiff()):
-            cu.commit(comment = 'DS-Lite configuration update')
+
+        if(cu.diff()):
+            logger.info("Configuration should be updated. Committing...")
+            try:
+                cu.commit(comment = 'DS-Lite configuration update')
+            except JunosException.RpcError as e:
+                logger.error("Failed to commit configuration.")
+                logger.error(e)
+        else:
+            logger.info("Configuration is not changed.")
 
         cu.unlock()
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
