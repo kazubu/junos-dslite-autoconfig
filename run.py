@@ -7,6 +7,7 @@ import os
 import random
 import re
 import socket
+import string
 import struct
 import sys
 
@@ -32,7 +33,8 @@ CAPABILITY = 'dslite'
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
 CONFIGURATION_FORMAT = """
 set interfaces ip-0/0/0 unit 0 family inet
-set interfaces ip-0/0/0 unit 0 tunnel destination {}
+set interfaces ip-0/0/0 unit 0 tunnel source ${source_address}
+set interfaces ip-0/0/0 unit 0 tunnel destination ${aftr}
 """[1:-1]
 
 logger = getLogger(__name__)
@@ -352,10 +354,10 @@ def get_provisioning_data(url, vendorid, product, version, capability, token = N
 
     return response
 
-def generate_dslite_configuration(provisioning_data):
+def generate_dslite_configuration(provisioning_data, source_address):
     aftr = provisioning_data['dslite']['aftr']
 
-    return CONFIGURATION_FORMAT.format(aftr)
+    return string.Template(CONFIGURATION_FORMAT).substitute(aftr = aftr, source_address = source_address)
 
 def get_interface_address(device, interface_name):
     interfaces = device.rpc.get_interface_information(interface_name = interface_name, terse = True)
@@ -412,7 +414,7 @@ if __name__ == '__main__':
         exit(2)
 
     if(pd):
-        print(generate_dslite_configuration(pd))
+        print(generate_dslite_configuration(provisioning_data = pd, source_address = interface_address))
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
         exit(2)
