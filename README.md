@@ -23,6 +23,10 @@ set routing-options rib inet6.0 static route ::/0 next-hop 2001:db8::1
 set routing-options static route 0/0 next-hop ip-0/0/0.0
 ```
 
+## Verified VNEs
+ - Internet Multifeed Transix (NTT East, Flet's Next)
+   - AFTR address is an IPv6 address.
+
 ## Caveats
  - Covers only vendorid, product, version and capability parameters. Persistent token and authentication is not implemented.
  - TLS certificate validation is disabled.
