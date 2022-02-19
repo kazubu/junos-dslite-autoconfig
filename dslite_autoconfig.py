@@ -345,20 +345,30 @@ class DNSResolver():
 Main Implementation
 '''
 
-def discover_provisioning_server(nameservers):
+def query_dns(domain, q_type, nameservers):
     resolver = DNSResolver
 
     try:
-        response_txt = resolver.txt_query(domain = DISCOVERY_FQDN, server = nameservers.pop())
-        logger.debug("Response TXT: %s" % response_txt)
-
+        if q_type == 'AAAA':
+            return resolver.aaaa_query(domain = domain, server = nameservers.pop())
+        if q_type == 'TXT':
+            return resolver.txt_query(domain = domain, server = nameservers.pop())
     except (DNSException, socket.timeout) as e:
         if len(nameservers):
             logger.warning("DNS Error. Retry with another DNS server.")
-            return discover_provisioning_server(nameservers)
+            return query_dns(domain, q_type, nameservers)
         else:
             logger.error("No response.")
             return None
+
+def discover_provisioning_server(nameservers):
+    resolver = DNSResolver
+
+    response_txt = query_dns(domain = DISCOVERY_FQDN, q_type = 'TXT', nameservers = nameservers)
+    logger.debug("Response TXT: %s" % response_txt)
+
+    if response_txt == None:
+        return None
 
     response_list = re.split('[\s=]', response_txt)
     result = {response_list[i]: response_list[i + 1] for i in range(0, len(response_list), 2)}
@@ -370,18 +380,7 @@ def get_aftr_address(provisioning_data, nameservers):
     logger.debug("AFTR Address: %s" % aftr)
     if('.' in aftr):
         logger.debug("It seems it's FQDN. Try to query AAAA to DNS server.")
-        resolver = DNSResolver
-
-        try:
-            aftr = resolver.aaaa_query(domain = aftr, server = nameservers.pop())
-            logger.debug("Resolved AFTR address: %s" % aftr)
-        except (DNSException, socket.timeout) as e:
-            if len(nameservers):
-                logger.warning("DNS Error. Retry with another DNS server.")
-                return get_aftr_address(provisioning_data, nameservers)
-            else:
-                logger.error("No response.")
-                return None
+        aftr = query_dns(domain = aftr, q_type = 'AAAA', nameservers = nameservers)
 
     return aftr
 
