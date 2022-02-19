@@ -23,9 +23,13 @@ set routing-options rib inet6.0 static route ::/0 next-hop 2001:db8::1
 set routing-options static route 0/0 next-hop ip-0/0/0.0
 ```
 
+ - This program is possible to use as library to obtain AFTR address. `get_aftr.py` is an example.
+
 ## Verified VNEs
- - Internet Multifeed Transix (NTT East, Flet's Next)
+ - Internet Multifeed transix (NTT East, Flet's Next, 2022/02)
    - AFTR address is an IPv6 address.
+ - AsahiNet v6コネクト (NTT East, Flet's Cross, 2022/02)
+   - AFTR address is FQDN. Returns 1 AAAA record.
 
 ## Caveats
  - Covers only vendorid, product, version and capability parameters. Persistent token and authentication is not implemented.
