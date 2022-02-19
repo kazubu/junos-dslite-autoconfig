@@ -9,7 +9,7 @@ This program is a sample implementation of [IPv6マイグレーション技術�
  - Load following configuration to Junos box(need to change NTT_EAST, ge-0/0/0.0, and USERNAME to appropriate value).
 
 ```
-set event-options generate-event dslite_update time-interval 60
+set event-options generate-event dslite_update time-interval 1800
 set event-options policy update-dslite-config events dslite_update
 set event-options policy update-dslite-config then event-script dslite-autoconfig.py arguments -area NTT_EAST
 set event-options policy update-dslite-config then event-script dslite-autoconfig.py arguments -external-interface ge-0/0/0.0
