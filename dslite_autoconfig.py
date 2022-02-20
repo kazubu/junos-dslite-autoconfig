@@ -27,7 +27,7 @@ DNS_SERVERS = {
 
 VENDOR_ID = '000000-test_router'
 PRODUCT = 'test-router'
-VERSION = '1_00'
+VERSION = '0_1_1'
 CAPABILITY = 'dslite'
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
