@@ -384,7 +384,10 @@ def get_aftr_address(provisioning_data, nameservers):
 
     return aftr
 
-def get_provisioning_data(url, vendorid, product, version, capability, token = None):
+def get_provisioning_data(provisioning_server, vendorid, product, version, capability, token = None, insecure = False):
+    url = provisioning_server['url']
+    t = provisioning_server['t']
+
     params = {}
     params["vendorid"] = vendorid
     params["product"] = product
@@ -392,7 +395,11 @@ def get_provisioning_data(url, vendorid, product, version, capability, token = N
     params["capability"] = capability
     params["token"] = token
 
-    response = json.loads(requests.get(url, params=params, verify=False).text)
+    verify_tls_cert = True if t == 'b' else False
+    verify_tls_cert = False if insecure else verify_tls_cert
+    logger.debug("TLS Certificate verification: %s" % str(verify_tls_cert))
+
+    response = json.loads(requests.get(url, params=params, verify=verify_tls_cert).text)
 
     return response
 
@@ -451,6 +458,7 @@ if __name__ == '__main__':
     parser.add_argument('--external-interface', required=True)
     parser.add_argument('--dns-from-dhcpv6')
     parser.add_argument('--area')
+    parser.add_argument('--insecure')
     parser.add_argument('--debug')
     args = parser.parse_args()
 
@@ -498,7 +506,9 @@ if __name__ == '__main__':
     logger.debug("Provisioning server: %s" % ps)
 
     if(ps):
-        pd = get_provisioning_data(url = ps["url"], vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY)
+        insecure = True if args.insecure else False
+
+        pd = get_provisioning_data(provisioning_server = ps, vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY, insecure = insecure)
         logger.debug("Provisioning Data: %s" % pd)
     else:
         logger.error("Failed to retrieve provisioning server. exit.")
