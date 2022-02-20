@@ -405,9 +405,19 @@ def get_interface_address(device, interface_name):
     for ifa in interfaces.getiterator("address-family"):
         if ifa.find("address-family-name").text.strip() == "inet6":
             for ifa in ifa.getiterator("interface-address"):
-                addr = ifa.find("ifa-local").text
+                addr = ifa.find("ifa-local").text.strip()
                 if addr[0:4] != 'fe80' and ':' in addr:
-                    return addr.strip().split('/')[0]
+                    return addr.split('/')[0]
+    return None
+
+def get_dhcpv6_dns_servers(device, interface_name):
+    dhcpv6_detail = device.rpc.get_dhcpv6_client_binding_information_by_interface(interface_name = interface_name, detail = True)
+
+    for dhcp_option in dhcpv6_detail.getiterator("dhcp-option"):
+        option_name = dhcp_option.find("dhcp-option-name")
+        if option_name is not None and option_name.text.strip() == "dns-recursive-server":
+            return dhcp_option.find("dhcp-option-value").text.strip().split(',')
+
     return None
 
 def update_configuration(device, configuration):
@@ -438,10 +448,16 @@ if __name__ == '__main__':
     from jnpr.junos import exception as JunosException
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--area', required=True)
     parser.add_argument('--external-interface', required=True)
+    parser.add_argument('--dns-from-dhcpv6')
+    parser.add_argument('--area')
     parser.add_argument('--debug')
     args = parser.parse_args()
+
+    if(args.dns_from_dhcpv6 is None and args.area is None):
+        logger.error("Option --dns-from-dhcpv6 or --area [AREA] is required.")
+        exit(1)
+
 
     handler = StreamHandler()
     handler.setFormatter(Formatter(LOG_FORMAT))
@@ -452,7 +468,6 @@ if __name__ == '__main__':
     device = Device()
     device.open()
 
-    area = args.area
     external_interface = args.external_interface
     logger.debug("External interface: %s" % external_interface)
 
@@ -463,11 +478,23 @@ if __name__ == '__main__':
 
     logger.debug("Interface address: %s" % interface_address)
 
-    if(not (area in DNS_SERVERS)):
-        logger.error("Area %s is not found! exit." % area)
-        exit(1)
+    dns_servers = None
+    if(args.area):
+        if(args.area in DNS_SERVERS):
+            dns_servers = DNS_SERVERS[args.area]
+        else:
+            logger.error("Area %s is not found! exit." % args.area)
+            exit(1)
+    else:
+        dns_servers = get_dhcpv6_dns_servers(device, external_interface)
 
-    ps = discover_provisioning_server(DNS_SERVERS[area])
+    if(dns_servers is None):
+        logger.error("DNS Server is not set. exit.")
+        exit(2)
+
+    logger.debug("DNS Servers: %s" % ', '.join(dns_servers))
+
+    ps = discover_provisioning_server(dns_servers)
     logger.debug("Provisioning server: %s" % ps)
 
     if(ps):
@@ -478,7 +505,7 @@ if __name__ == '__main__':
         exit(2)
 
     if(pd):
-        aftr = get_aftr_address(pd, DNS_SERVERS[area])
+        aftr = get_aftr_address(pd, dns_servers)
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
         exit(2)
