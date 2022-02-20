@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from logging import getLogger, Formatter, StreamHandler, DEBUG
-
 import os
 import random
 import re
@@ -11,43 +9,12 @@ import string
 import struct
 import sys
 
-import argparse
 import ipaddress
-import json
-import requests
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-DISCOVERY_FQDN = '4over6.info'
-DNS_SERVERS = {
-        "NTT_EAST": ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3'],
-        "NTT_WEST": ['2001:a7ff:5f01::a', '2001:a7ff:5f01:1::a']
-        }
-
-VENDOR_ID = '000000-test_router'
-PRODUCT = 'dslite_autoconfig'
-VERSION = '0_2_0'
-CAPABILITY = 'dslite'
-
-LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
-CONFIGURATION_FORMAT = """
-set interfaces ip-0/0/0 unit 0 family inet
-set interfaces ip-0/0/0 unit 0 tunnel source ${source_address}
-set interfaces ip-0/0/0 unit 0 tunnel destination ${aftr}
-"""[1:-1]
-
-logger = getLogger(__name__)
-
-'''
-DNS Implementation
-'''
 
 TYPE_TXT         = 16
 TYPE_AAAA        = 28
 OPCODE_QUERY   = 0
 CLASS_IN      = 1
-
 
 class DNSException(Exception):
     """All our exceptions."""
@@ -340,195 +307,4 @@ class DNSResolver():
                   ):
         result = DNSResolver.simple_query(domain, q_type = TYPE_TXT, server = server, port = port)
         return result
-
-'''
-Main Implementation
-'''
-
-def query_dns(domain, q_type, nameservers):
-    resolver = DNSResolver
-
-    try:
-        if q_type == 'AAAA':
-            return resolver.aaaa_query(domain = domain, server = nameservers.pop())
-        if q_type == 'TXT':
-            return resolver.txt_query(domain = domain, server = nameservers.pop())
-    except (DNSException, socket.timeout) as e:
-        if len(nameservers):
-            logger.warning("DNS Error. Retry with another DNS server.")
-            return query_dns(domain, q_type, nameservers)
-        else:
-            logger.error("No response.")
-            return None
-
-def discover_provisioning_server(nameservers):
-    resolver = DNSResolver
-
-    response_txt = query_dns(domain = DISCOVERY_FQDN, q_type = 'TXT', nameservers = nameservers)
-    logger.debug("Response TXT: %s" % response_txt)
-
-    if response_txt == None:
-        return None
-
-    response_list = re.split('[\s=]', response_txt)
-    result = {response_list[i]: response_list[i + 1] for i in range(0, len(response_list), 2)}
-
-    return result
-
-def get_aftr_address(provisioning_data, nameservers):
-    aftr = provisioning_data['dslite']['aftr']
-    logger.debug("AFTR Address: %s" % aftr)
-    if('.' in aftr):
-        logger.debug("It seems it's FQDN. Try to query AAAA to DNS server.")
-        aftr = query_dns(domain = aftr, q_type = 'AAAA', nameservers = nameservers)
-
-    return aftr
-
-def get_provisioning_data(provisioning_server, vendorid, product, version, capability, token = None, insecure = False):
-    url = provisioning_server['url']
-    t = provisioning_server['t']
-
-    params = {}
-    params["vendorid"] = vendorid
-    params["product"] = product
-    params["version"] = version
-    params["capability"] = capability
-    params["token"] = token
-
-    verify_tls_cert = True if t == 'b' else False
-    verify_tls_cert = False if insecure else verify_tls_cert
-    logger.debug("TLS Certificate verification: %s" % str(verify_tls_cert))
-
-    response = json.loads(requests.get(url, params=params, verify=verify_tls_cert).text)
-
-    return response
-
-def generate_dslite_configuration(aftr, source_address):
-    return string.Template(CONFIGURATION_FORMAT).substitute(aftr = aftr, source_address = source_address)
-
-def get_interface_address(device, interface_name):
-    interfaces = device.rpc.get_interface_information(interface_name = interface_name, terse = True)
-
-    for ifa in interfaces.getiterator("address-family"):
-        if ifa.find("address-family-name").text.strip() == "inet6":
-            for ifa in ifa.getiterator("interface-address"):
-                addr = ifa.find("ifa-local").text.strip()
-                if addr[0:4] != 'fe80' and ':' in addr:
-                    return addr.split('/')[0]
-    return None
-
-def get_dhcpv6_dns_servers(device, interface_name):
-    dhcpv6_detail = device.rpc.get_dhcpv6_client_binding_information_by_interface(interface_name = interface_name, detail = True)
-
-    for dhcp_option in dhcpv6_detail.getiterator("dhcp-option"):
-        option_name = dhcp_option.find("dhcp-option-name")
-        if option_name is not None and option_name.text.strip() == "dns-recursive-server":
-            return dhcp_option.find("dhcp-option-value").text.strip().split(',')
-
-    return None
-
-def update_configuration(device, configuration):
-    try:
-        with Config(device) as cu:
-            cu.lock()
-
-            cu.load(configuration, format="set", merge = True)
-
-            if(cu.diff()):
-                logger.info("Configuration should be updated. Committing...")
-                cu.commit(comment = 'DS-Lite configuration update')
-            else:
-                logger.info("Configuration is not changed.")
-
-            cu.unlock()
-    except JunosException.LockError as e:
-        logger.error("Failed to lock configuration database. Candidate configuration is may found.")
-        logger.error(e)
-    except JunosException.RpcError as e:
-        logger.error("Failed to commit configuration.")
-        logger.error(e)
-
-
-if __name__ == '__main__':
-    from jnpr.junos import Device
-    from jnpr.junos.utils.config import Config
-    from jnpr.junos import exception as JunosException
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--external-interface', required=True)
-    parser.add_argument('--dns-from-dhcpv6')
-    parser.add_argument('--area')
-    parser.add_argument('--insecure')
-    parser.add_argument('--debug')
-    args = parser.parse_args()
-
-    if(args.dns_from_dhcpv6 is None and args.area is None):
-        logger.error("Option --dns-from-dhcpv6 or --area [AREA] is required.")
-        exit(1)
-
-
-    handler = StreamHandler()
-    handler.setFormatter(Formatter(LOG_FORMAT))
-    logger.addHandler(handler)
-    if(args.debug):
-        logger.setLevel(DEBUG)
-
-    device = Device()
-    device.open()
-
-    external_interface = args.external_interface
-    logger.debug("External interface: %s" % external_interface)
-
-    interface_address = get_interface_address(device, external_interface)
-    if(interface_address == None):
-        logger.error("Interface has no IPv6 address!")
-        exit(2)
-
-    logger.debug("Interface address: %s" % interface_address)
-
-    dns_servers = None
-    if(args.area):
-        if(args.area in DNS_SERVERS):
-            dns_servers = DNS_SERVERS[args.area]
-        else:
-            logger.error("Area %s is not found! exit." % args.area)
-            exit(1)
-    else:
-        dns_servers = get_dhcpv6_dns_servers(device, external_interface)
-
-    if(dns_servers is None):
-        logger.error("DNS Server is not set. exit.")
-        exit(2)
-
-    logger.debug("DNS Servers: %s" % ', '.join(dns_servers))
-
-    ps = discover_provisioning_server(dns_servers)
-    logger.debug("Provisioning server: %s" % ps)
-
-    if(ps):
-        insecure = True if args.insecure else False
-
-        pd = get_provisioning_data(provisioning_server = ps, vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY, insecure = insecure)
-        logger.debug("Provisioning Data: %s" % pd)
-    else:
-        logger.error("Failed to retrieve provisioning server. exit.")
-        exit(2)
-
-    if(pd):
-        aftr = get_aftr_address(pd, dns_servers)
-    else:
-        logger.error("Failed to retrieve provisioning data. exit.")
-        exit(2)
-
-    if(aftr):
-        config = generate_dslite_configuration(aftr = aftr, source_address = interface_address)
-    else:
-        logger.error("Failed to retrieve AFTR IP address. exit.")
-        exit(2)
-
-    update_configuration(device, config)
-
-    device.close()
-
-    exit()
 

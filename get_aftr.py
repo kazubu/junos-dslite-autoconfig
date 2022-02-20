@@ -2,8 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import logging
 
-import dslite_autoconfig
+import v6mig
+
+LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
+DNS_SERVERS = {
+        "NTT_EAST": ['2404:1a8:7f01:a::3', '2404:1a8:7f01:b::3'],
+        "NTT_WEST": ['2001:a7ff:5f01::a', '2001:a7ff:5f01:1::a']
+        }
+
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -11,31 +20,31 @@ if __name__ == '__main__':
     parser.add_argument('--insecure')
     args = parser.parse_args()
 
-    handler = dslite_autoconfig.StreamHandler()
-    handler.setFormatter(dslite_autoconfig.Formatter(dslite_autoconfig.LOG_FORMAT))
-    dslite_autoconfig.logger.addHandler(handler)
-    dslite_autoconfig.logger.setLevel(dslite_autoconfig.DEBUG)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
     area = args.area
 
     insecure = True if args.insecure else False
 
-    if(not (area in dslite_autoconfig.DNS_SERVERS)):
+    if(not (area in DNS_SERVERS)):
         print("Area %s is not found! exit." % area)
         exit(1)
 
-    ps = dslite_autoconfig.discover_provisioning_server(dslite_autoconfig.DNS_SERVERS[area])
+    ps = v6mig.discover_provisioning_server(DNS_SERVERS[area])
     print("Provisioning server: %s" % ps)
 
     if(ps):
-        pd = dslite_autoconfig.get_provisioning_data(provisioning_server = ps, vendorid = dslite_autoconfig.VENDOR_ID, product = dslite_autoconfig.PRODUCT, version = dslite_autoconfig.VERSION, capability = dslite_autoconfig.CAPABILITY, insecure = insecure)
+        pd = v6mig.get_provisioning_data(provisioning_server = ps, insecure = insecure)
         print("Provisioning Data: %s" % pd)
     else:
         print("Failed to retrieve provisioning server. exit.")
         exit(2)
 
     if(pd):
-        aftr = dslite_autoconfig.get_aftr_address(pd, dslite_autoconfig.DNS_SERVERS[area])
+        aftr = v6mig.get_aftr_address(pd, DNS_SERVERS[area])
     else:
         print("Failed to retrieve provisioning data. exit.")
         exit(2)
