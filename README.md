@@ -4,6 +4,8 @@ This program is a sample implementation of [IPv6マイグレーション技術�
 
 ## Usage
 
+ - Execute `pip install -r requirements.txt` to install required library.
+ - Run `./build.sh` to generate `dslite_autoconfig.py`
  - Copy `dslite_autoconfig.py` to `/var/db/scripts/event/`
  - Change script permission to 755 (`chmod 755 /var/db/scripts/event/dslite_autoconfig.py`).
 
