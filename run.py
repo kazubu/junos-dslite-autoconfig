@@ -23,6 +23,8 @@ CAPABILITY = 'dslite'
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
 
+IPIP_IFL = 'ip-0/0/0.0'
+
 logger = getLogger(__name__)
 
 if __name__ == '__main__':
@@ -94,7 +96,7 @@ if __name__ == '__main__':
         exit(2)
 
     if(aftr):
-        config = junos.generate_dslite_configuration(aftr = aftr, source_address = interface_address)
+        config = junos.generate_dslite_configuration(ifl = IPIP_IFL, aftr = aftr, source_address = interface_address)
     else:
         logger.error("Failed to retrieve AFTR IP address. exit.")
         exit(2)
