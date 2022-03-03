@@ -4,6 +4,7 @@
 from logging import getLogger, Formatter, StreamHandler, DEBUG
 
 import argparse
+import copy
 from jnpr.junos import Device
 
 import junos_utils as junos
@@ -74,20 +75,20 @@ if __name__ == '__main__':
 
     logger.debug("DNS Servers: %s" % ', '.join(dns_servers))
 
-    ps = v6mig.discover_provisioning_server(dns_servers)
+    ps = v6mig.discover_provisioning_server(copy.copy(dns_servers))
     logger.debug("Provisioning server: %s" % ps)
 
     if(ps):
         insecure = True if args.insecure else False
 
-        pd = v6mig.get_provisioning_data(provisioning_server = ps, vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY, insecure = insecure)
+        pd = v6mig.get_provisioning_data(provisioning_server = ps, nameservers = copy.copy(dns_servers), vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY, insecure = insecure)
         logger.debug("Provisioning Data: %s" % pd)
     else:
         logger.error("Failed to retrieve provisioning server. exit.")
         exit(2)
 
     if(pd):
-        aftr = v6mig.get_aftr_address(pd, dns_servers)
+        aftr = v6mig.get_aftr_address(pd, copy.copy(dns_servers))
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
         exit(2)

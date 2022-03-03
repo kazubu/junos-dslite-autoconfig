@@ -9,6 +9,7 @@ import socket
 import ipaddress
 import json
 import requests
+import urllib
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -22,6 +23,9 @@ VERSION = '0_2_0'
 CAPABILITY = 'dslite'
 
 logger = getLogger(__name__)
+
+original_create_connection = urllib3.util.connection.create_connection
+global_nameservers = []
 
 def query_dns(domain, q_type, nameservers):
     resolver = dns.DNSResolver
@@ -53,14 +57,20 @@ def discover_provisioning_server(nameservers):
 
 def get_aftr_address(provisioning_data, nameservers):
     aftr = provisioning_data['dslite']['aftr']
-    logger.debug("AFTR Address: %s" % aftr)
     if('.' in aftr):
         logger.debug("It seems it's FQDN. Try to query AAAA to DNS server.")
         aftr = query_dns(domain = aftr, q_type = 'AAAA', nameservers = nameservers)
 
     return aftr
 
-def get_provisioning_data(provisioning_server, vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY, token = None, insecure = False):
+def custom_create_connection(address, *args, **kwargs):
+    host, port = address
+    hostname = query_dns(host, 'AAAA', global_nameservers)
+
+    return original_create_connection((hostname, port), *args, **kwargs)
+
+def get_provisioning_data(provisioning_server, nameservers, vendorid = VENDOR_ID, product = PRODUCT, version = VERSION, capability = CAPABILITY, token = None, insecure = False):
+    global global_nameservers
     url = provisioning_server['url']
     t = provisioning_server['t']
 
@@ -75,6 +85,9 @@ def get_provisioning_data(provisioning_server, vendorid = VENDOR_ID, product = P
     verify_tls_cert = False if insecure else verify_tls_cert
     logger.debug("TLS Certificate verification: %s" % str(verify_tls_cert))
 
-    response = json.loads(requests.get(url, params=params, verify=verify_tls_cert).text)
+    global_nameservers = nameservers
+    urllib3.util.connection.create_connection = custom_create_connection
+
+    response = json.loads(requests.get(url, params = params, verify = verify_tls_cert).text)
 
     return response

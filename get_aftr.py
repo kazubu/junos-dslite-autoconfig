@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import copy
 
 import v6mig
 
@@ -33,18 +34,18 @@ if __name__ == '__main__':
         print("Area %s is not found! exit." % area)
         exit(1)
 
-    ps = v6mig.discover_provisioning_server(DNS_SERVERS[area])
+    ps = v6mig.discover_provisioning_server(copy.copy(DNS_SERVERS[area]))
     print("Provisioning server: %s" % ps)
 
     if(ps):
-        pd = v6mig.get_provisioning_data(provisioning_server = ps, insecure = insecure)
+        pd = v6mig.get_provisioning_data(provisioning_server = ps, nameservers = copy.copy(DNS_SERVERS[area]), insecure = insecure)
         print("Provisioning Data: %s" % pd)
     else:
         print("Failed to retrieve provisioning server. exit.")
         exit(2)
 
     if(pd):
-        aftr = v6mig.get_aftr_address(pd, DNS_SERVERS[area])
+        aftr = v6mig.get_aftr_address(pd, copy.copy(DNS_SERVERS[area]))
     else:
         print("Failed to retrieve provisioning data. exit.")
         exit(2)
