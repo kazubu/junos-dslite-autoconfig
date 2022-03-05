@@ -17,6 +17,7 @@ set event-options generate-event dslite_update time-interval 1800
 set event-options policy update-dslite-config events dslite_update
 set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -area NTT_EAST
 set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -external-interface ge-0/0/0.0
+set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -insecure true
 set event-options event-script file dslite_autoconfig.py python-script-user USERNAME
 ```
 
@@ -35,6 +36,7 @@ set event-options generate-event dslite_update time-interval 1800
 set event-options policy update-dslite-config events dslite_update
 set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -dns-from-dhcpv6 true
 set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -external-interface ge-0/0/0.0
+set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -insecure true
 set event-options event-script file dslite_autoconfig.py python-script-user USERNAME
 ```
 
@@ -49,6 +51,14 @@ set routing-options static route 0/0 next-hop ip-0/0/0.0
 
 
  - This program is possible to use as library to obtain AFTR address. `get_aftr.py` is an example.
+
+## Options
+ - --external-interface [Interface Name(IFL)]: Required. Specify external interface for DS-Lite tunnel.
+ - --dns-from-dhcpv6 [true]: Use DNS servers received from DHCPv6. Required if --area is not specified.
+ - --area [NTT_EAST|NTT_WEST]: Use hardcoded DNS servers. Required if --dns-from-dhcpv6 is not specified.
+ - --insecure [true]: Optional. Do not check TLS certificate.
+ - --debug [true]: Optional. Output debug messages.
+ - --ipip-ifl [Interface Name(IFL)]: Optional. Specify IP-IP tunnel interface for DS-Lite tunnel.
 
 ## Verified VNEs
  - Internet Multifeed transix (NTT East, Flet's Next, 2022/02)
