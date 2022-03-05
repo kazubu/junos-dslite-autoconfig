@@ -15,8 +15,8 @@ This program is a sample implementation of [IPv6マイグレーション技術�
 ```
 set event-options generate-event dslite_update time-interval 1800
 set event-options policy update-dslite-config events dslite_update
-set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments --area NTT_EAST
-set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments --external-interface ge-0/0/0.0
+set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -area NTT_EAST
+set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -external-interface ge-0/0/0.0
 set event-options event-script file dslite_autoconfig.py python-script-user USERNAME
 ```
 
@@ -33,8 +33,8 @@ set routing-options static route 0/0 next-hop ip-0/0/0.0
 ```
 set event-options generate-event dslite_update time-interval 1800
 set event-options policy update-dslite-config events dslite_update
-set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments --dns-from-dhcpv6 true
-set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments --external-interface ge-0/0/0.0
+set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -dns-from-dhcpv6 true
+set event-options policy update-dslite-config then event-script dslite_autoconfig.py arguments -external-interface ge-0/0/0.0
 set event-options event-script file dslite_autoconfig.py python-script-user USERNAME
 ```
 
