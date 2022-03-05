@@ -1,20 +1,17 @@
 from logging import getLogger
 import string
 
-from jnpr.junos.utils.config import Config
-from jnpr.junos import exception as JunosException
-
 
 CONFIGURATION_FORMAT = """
-set interfaces ip-0/0/0 unit 0 family inet
-set interfaces ip-0/0/0 unit 0 tunnel source ${source_address}
-set interfaces ip-0/0/0 unit 0 tunnel destination ${aftr}
+set interfaces ${ifl} family inet
+set interfaces ${ifl} tunnel source ${source_address}
+set interfaces ${ifl} tunnel destination ${aftr}
 """[1:-1]
 
 logger = getLogger(__name__)
 
-def generate_dslite_configuration(aftr, source_address):
-    return string.Template(CONFIGURATION_FORMAT).substitute(aftr = aftr, source_address = source_address)
+def generate_dslite_configuration(ifl, aftr, source_address):
+    return string.Template(CONFIGURATION_FORMAT).substitute(ifl = ifl, aftr = aftr, source_address = source_address)
 
 def get_interface_address(device, interface_name):
     interfaces = device.rpc.get_interface_information(interface_name = interface_name, terse = True)
@@ -37,7 +34,18 @@ def get_dhcpv6_dns_servers(device, interface_name):
 
     return None
 
+def get_current_ipip_destination(device, ifl):
+    interfaces = device.rpc.get_interface_information(interface_name = ifl)
+
+    for link_address in interfaces.getiterator("link-address"):
+        if len(link_address.text):
+            return link_address.text.strip().split('-')[1]
+
+    return None
+
 def update_configuration(device, configuration):
+    from jnpr.junos.utils.config import Config
+    from jnpr.junos import exception as JunosException
     try:
         with Config(device) as cu:
             cu.lock()

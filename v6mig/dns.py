@@ -284,21 +284,26 @@ class DNSResolver():
                   q_type: int,
                   server: str,
                   port: int = 53,
+                  multiple: bool = False,
                   ):
-        result = None
+        result = []
         answers = DNSResolver.udp_query(domain, q_type = q_type, server = server, port = port)
         for a in answers:
             if a.rdata_type == q_type:
-                result = a.rdata
-                break;
+                result.append(a.rdata)
 
-        return result
+        if len(result) == 0:
+            return None
+        if multiple:
+            return result
+        return result[0]
 
     def aaaa_query(domain: str,
                   server: str,
-                  port: int = 53
+                  port: int = 53,
+                  multiple: bool = False,
                   ):
-        result = DNSResolver.simple_query(domain, q_type = TYPE_AAAA, server = server, port = port)
+        result = DNSResolver.simple_query(domain, q_type = TYPE_AAAA, server = server, port = port, multiple = multiple)
         return result
 
     def txt_query(domain: str,

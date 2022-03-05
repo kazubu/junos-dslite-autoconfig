@@ -45,7 +45,7 @@ if __name__ == '__main__':
         exit(2)
 
     if(pd):
-        aftr = v6mig.get_aftr_address(pd, copy.copy(DNS_SERVERS[area]))
+        aftr = v6mig.get_aftr_address(pd, copy.copy(DNS_SERVERS[area]), multiple = True)
     else:
         print("Failed to retrieve provisioning data. exit.")
         exit(2)

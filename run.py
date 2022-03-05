@@ -23,6 +23,8 @@ CAPABILITY = 'dslite'
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s][%(name)s:%(lineno)s][%(funcName)s]: %(message)s"
 
+IPIP_IFL = 'ip-0/0/0.0'
+
 logger = getLogger(__name__)
 
 if __name__ == '__main__':
@@ -33,6 +35,8 @@ if __name__ == '__main__':
     parser.add_argument('--area')
     parser.add_argument('--insecure')
     parser.add_argument('--debug')
+    parser.add_argument('--ipip-ifl')
+
     args = parser.parse_args()
 
     if(args.dns_from_dhcpv6 is None and args.area is None):
@@ -88,13 +92,26 @@ if __name__ == '__main__':
         exit(2)
 
     if(pd):
-        aftr = v6mig.get_aftr_address(pd, copy.copy(dns_servers))
+        aftr = v6mig.get_aftr_address(pd, copy.copy(dns_servers), multiple = True)
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
         exit(2)
 
-    if(aftr):
-        config = junos.generate_dslite_configuration(aftr = aftr, source_address = interface_address)
+    if(len(aftr)):
+        logger.debug("AFTR(s): %s", str(aftr))
+        ipip_ifl = args.ipip_ifl if args.ipip_ifl else IPIP_IFL
+
+        if len(aftr) > 1:
+            current_aftr = junos.get_current_ipip_destination(device = device, ifl = ipip_ifl)
+            logger.debug("Current configured AFTR: %s", current_aftr)
+            selected_aftr = current_aftr if current_aftr in aftr else aftr[0]
+        else:
+            selected_aftr = aftr[0]
+
+        logger.debug("Selected AFTR: %s" % selected_aftr)
+        config = junos.generate_dslite_configuration(ifl = ipip_ifl, aftr = selected_aftr, source_address = interface_address)
+
+        logger.debug("Generated configuration:\n%s", config)
     else:
         logger.error("Failed to retrieve AFTR IP address. exit.")
         exit(2)

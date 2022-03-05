@@ -27,18 +27,18 @@ logger = getLogger(__name__)
 original_create_connection = urllib3.util.connection.create_connection
 global_nameservers = []
 
-def query_dns(domain, q_type, nameservers):
+def query_dns(domain, q_type, nameservers, multiple = False):
     resolver = dns.DNSResolver
 
     try:
         if q_type == 'AAAA':
-            return resolver.aaaa_query(domain = domain, server = nameservers.pop())
+            return resolver.aaaa_query(domain = domain, server = nameservers.pop(), multiple = multiple)
         if q_type == 'TXT':
             return resolver.txt_query(domain = domain, server = nameservers.pop())
     except (dns.DNSException, socket.timeout) as e:
         if len(nameservers):
             logger.warning("DNS Error. Retry with another DNS server.")
-            return query_dns(domain, q_type, nameservers)
+            return query_dns(domain, q_type, nameservers, multiple = multiple)
         else:
             logger.error("No response.")
             return None
@@ -55,11 +55,11 @@ def discover_provisioning_server(nameservers):
 
     return result
 
-def get_aftr_address(provisioning_data, nameservers):
+def get_aftr_address(provisioning_data, nameservers, multiple = False):
     aftr = provisioning_data['dslite']['aftr']
     if('.' in aftr):
         logger.debug("It seems it's FQDN. Try to query AAAA to DNS server.")
-        aftr = query_dns(domain = aftr, q_type = 'AAAA', nameservers = nameservers)
+        aftr = query_dns(domain = aftr, q_type = 'AAAA', nameservers = nameservers, multiple = multiple)
 
     return aftr
 
