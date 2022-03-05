@@ -1,8 +1,6 @@
 from logging import getLogger
 import string
 
-from jnpr.junos.utils.config import Config
-from jnpr.junos import exception as JunosException
 
 CONFIGURATION_FORMAT = """
 set interfaces ${ifl} family inet
@@ -36,7 +34,18 @@ def get_dhcpv6_dns_servers(device, interface_name):
 
     return None
 
+def get_current_ipip_destination(device, ifl):
+    interfaces = device.rpc.get_interface_information(interface_name = ifl)
+
+    for link_address in interfaces.getiterator("link-address"):
+        if len(link_address.text):
+            return link_address.text.strip().split('-')[1]
+
+    return None
+
 def update_configuration(device, configuration):
+    from jnpr.junos.utils.config import Config
+    from jnpr.junos import exception as JunosException
     try:
         with Config(device) as cu:
             cu.lock()
