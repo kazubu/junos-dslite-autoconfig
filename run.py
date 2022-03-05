@@ -92,14 +92,26 @@ if __name__ == '__main__':
         exit(2)
 
     if(pd):
-        aftr = v6mig.get_aftr_address(pd, copy.copy(dns_servers))
+        aftr = v6mig.get_aftr_address(pd, copy.copy(dns_servers), multiple = True)
     else:
         logger.error("Failed to retrieve provisioning data. exit.")
         exit(2)
 
-    if(aftr):
+    if(len(aftr)):
+        logger.debug("AFTR(s): %s", str(aftr))
         ipip_ifl = args.ipip_ifl if args.ipip_ifl else IPIP_IFL
-        config = junos.generate_dslite_configuration(ifl = ipip_ifl, aftr = aftr, source_address = interface_address)
+
+        if len(aftr) > 1:
+            current_aftr = junos.get_current_ipip_destination(device = device, ifl = ipip_ifl)
+            logger.debug("Current configured AFTR: %s", current_aftr)
+            selected_aftr = current_aftr if current_aftr in aftr else aftr[0]
+        else:
+            selected_aftr = aftr[0]
+
+        logger.debug("Selected AFTR: %s" % selected_aftr)
+        config = junos.generate_dslite_configuration(ifl = ipip_ifl, aftr = selected_aftr, source_address = interface_address)
+
+        logger.debug("Generated configuration:\n%s", config)
     else:
         logger.error("Failed to retrieve AFTR IP address. exit.")
         exit(2)
