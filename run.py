@@ -35,6 +35,8 @@ if __name__ == '__main__':
     parser.add_argument('--area')
     parser.add_argument('--insecure')
     parser.add_argument('--debug')
+    parser.add_argument('--ipip-ifl')
+
     args = parser.parse_args()
 
     if(args.dns_from_dhcpv6 is None and args.area is None):
@@ -96,7 +98,8 @@ if __name__ == '__main__':
         exit(2)
 
     if(aftr):
-        config = junos.generate_dslite_configuration(ifl = IPIP_IFL, aftr = aftr, source_address = interface_address)
+        ipip_ifl = args.ipip_ifl if args.ipip_ifl else IPIP_IFL
+        config = junos.generate_dslite_configuration(ifl = ipip_ifl, aftr = aftr, source_address = interface_address)
     else:
         logger.error("Failed to retrieve AFTR IP address. exit.")
         exit(2)
