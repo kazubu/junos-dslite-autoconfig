@@ -1,1 +1,1 @@
-from v6mig.main import *
+from .main import *

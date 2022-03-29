@@ -1,1 +1,1 @@
-from junos_utils.main import *
+from .main import *

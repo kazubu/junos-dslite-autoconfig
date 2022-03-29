@@ -13,7 +13,7 @@ import urllib
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-import v6mig.dns as dns
+from . import dns
 
 DISCOVERY_FQDN = '4over6.info'
 
