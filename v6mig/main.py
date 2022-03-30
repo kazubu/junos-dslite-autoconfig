@@ -88,6 +88,10 @@ def get_provisioning_data(provisioning_server, nameservers, vendorid = VENDOR_ID
     global_nameservers = nameservers
     urllib3.util.connection.create_connection = custom_create_connection
 
-    response = json.loads(requests.get(url, params = params, verify = verify_tls_cert).text)
+    try:
+        response = requests.get(url, params = params, verify = verify_tls_cert).text
+    except requests.exceptions.SSLError as ex:
+        logger.error("SSL Error is detected.")
+        return None
 
-    return response
+    return json.loads(response)
