@@ -62,7 +62,10 @@ def update_configuration(device, configuration):
     except JunosException.LockError as e:
         logger.error("Failed to lock configuration database. Candidate configuration is may found.")
         logger.error(e)
+        return False
     except JunosException.RpcError as e:
         logger.error("Failed to commit configuration.")
         logger.error(e)
+        return False
 
+    return True
