@@ -6,7 +6,7 @@ This program is a sample implementation of [IPv6マイグレーション技術�
 
  - Execute `pip install -r requirements.txt` to install required library.
  - Run `./build.sh` to generate `dslite_autoconfig.py`
- - Copy `dslite_autoconfig.py` to `/var/db/scripts/event/`
+ - Copy `dslite_autoconfig.py` to `/var/db/scripts/event/` on Junos router
  - Change script permission to 755 (`chmod 755 /var/db/scripts/event/dslite_autoconfig.py`).
 
 ### Static address configuration for NGN facing interface
