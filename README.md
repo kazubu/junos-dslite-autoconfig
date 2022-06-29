@@ -68,7 +68,6 @@ set routing-options static route 0/0 next-hop ip-0/0/0.0
 
 ## Caveats
  - Covers only vendorid, product, version and capability parameters. Persistent token and authentication is not implemented.
- - Currently, SRX doesn't support IPIP6 tunnel. This script works only on MX series router.
  - Currently, MX series router doesn't support DHCPv6 client with autoconfig(RA) mode(statefull ia-pd only).
 
 ## Acknowledgement
