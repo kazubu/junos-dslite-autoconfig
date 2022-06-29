@@ -45,7 +45,7 @@ set event-options event-script file dslite_autoconfig.py python-script-user USER
 set interfaces ge-0/0/0 unit 0 family inet6 dhcpv6-client client-type autoconfig
 set interfaces ge-0/0/0 unit 0 family inet6 dhcpv6-client client-ia-type ia-na
 set interfaces ge-0/0/0 unit 0 family inet6 dhcpv6-client client-identifier duid-type duid-ll
-set protocols router-advertisement interface ge-0/0/0.0 default-lifetime 0
+set protocols router-advertisement interface ge-0/0/0.0 passive-mode
 set routing-options static route 0/0 next-hop ip-0/0/0.0
 ```
 
